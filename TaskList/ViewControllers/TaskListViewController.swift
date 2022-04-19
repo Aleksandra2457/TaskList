@@ -62,7 +62,11 @@ class TaskListViewController: UITableViewController {
             guard let task = alert.textFields?.first?.text, !task.isEmpty else { return }
             self.save(task)
         }
-        let cancelAction = UIAlertAction(title: "Cancel", style: .destructive)
+        let cancelAction = UIAlertAction(title: "Cancel", style: .destructive) { _ in
+            if let indexPath = self.tableView.indexPathForSelectedRow {
+                self.tableView.deselectRow(at: indexPath, animated: true)
+            }
+        }
         alert.addAction(saveAction)
         alert.addAction(cancelAction)
         alert.addTextField { textField in
