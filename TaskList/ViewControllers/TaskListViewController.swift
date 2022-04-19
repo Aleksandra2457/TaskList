@@ -6,23 +6,25 @@
 //
 
 import UIKit
-import CoreData
 
 class TaskListViewController: UITableViewController {
     
-    private let viewContext = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
-    
+    // MARK: - Private Properties
     private var taskList: [Task] = []
     private let cellID = "task"
     
+    // MARK: - Life Cycles Methods
     override func viewDidLoad() {
         super.viewDidLoad()
         tableView.register(UITableViewCell.self, forCellReuseIdentifier: cellID)
         view.backgroundColor = .white
         setupNavigationBar()
-        fetchData()
+        CoreDataManager.shared.fetchData { taskList in
+            self.taskList = taskList
+        }
     }
     
+    // MARK: - Private Methods
     private func setupNavigationBar() {
         title = "Task List"
         navigationController?.navigationBar.prefersLargeTitles = true
@@ -54,15 +56,6 @@ class TaskListViewController: UITableViewController {
         showAlert(with: "New Task", with: "What do you want to do?", and: "Add new task")
     }
     
-    private func fetchData() {
-        let fetchRequest = Task.fetchRequest()
-        do {
-            taskList = try viewContext.fetch(fetchRequest)
-        } catch {
-            print(error.localizedDescription)
-        }
-    }
-    
     private func showAlert(with title: String, with message: String, and placeholder: String) {
         let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
         let saveAction = UIAlertAction(title: "Save", style: .default) { _ in
@@ -79,11 +72,11 @@ class TaskListViewController: UITableViewController {
     }
     
     private func save(_ taskName: String) {
-        let task = Task(context: viewContext)
+        let task = Task(context: CoreDataManager.shared.persistentContainer.viewContext)
         task.title = taskName
         if let indexPath = tableView.indexPathForSelectedRow {
             let editedTask = taskList[indexPath.row]
-            viewContext.delete(editedTask)
+            CoreDataManager.shared.persistentContainer.viewContext.delete(editedTask)
             taskList[indexPath.row] = task
             tableView.deselectRow(at: indexPath, animated: true)
             tableView.reloadRows(at: [indexPath], with: .automatic)
@@ -92,29 +85,14 @@ class TaskListViewController: UITableViewController {
             let cellIndex = IndexPath(row: taskList.count - 1, section: 0)
             tableView.insertRows(at: [cellIndex], with: .automatic)
         }
-        
-        if viewContext.hasChanges {
-            do {
-                try viewContext.save()
-            } catch {
-                print(error.localizedDescription)
-            }
-        }
+        CoreDataManager.shared.saveChanges()
     }
-    
-    private func delete(_ task: Task) {
-        viewContext.delete(task)
-        if viewContext.hasChanges {
-            do {
-                try viewContext.save()
-            } catch {
-                print(error.localizedDescription)
-            }
-        }
-    }
+
 }
 
 extension TaskListViewController {
+    
+    // MARK: - Table View Data Source
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         taskList.count
     }
@@ -128,13 +106,14 @@ extension TaskListViewController {
         return cell
     }
     
+    // MARK: - Table View Delagate
     override func tableView(_ tableView: UITableView, editingStyleForRowAt indexPath: IndexPath) -> UITableViewCell.EditingStyle {
         .delete
     }
     
     override func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCell.EditingStyle, forRowAt indexPath: IndexPath) {
         let task = taskList[indexPath.row]
-        delete(task)
+        CoreDataManager.shared.delete(task)
         taskList.remove(at: indexPath.row)
         tableView.deleteRows(at: [indexPath], with: .automatic)
     }
